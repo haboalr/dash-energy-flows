@@ -82,6 +82,6 @@ def update_chord(year):
     fig.update_layout(title_text=f"Energy Flows Between Germany and Neighbors in {year}", font_size=10)
     return fig
 
-# Run the app
+server = app.server
 if __name__ == '__main__':
     app.run_server(debug=True)
