@@ -5,6 +5,7 @@ Created on Fri Jan 31 23:51:27 2025
 @author: Hamza
 """
 
+import random
 import dash
 from dash import dcc, html  
 from dash.dependencies import Input, Output
@@ -62,21 +63,35 @@ def update_chord(year):
         plotly.graph_objects.Figure: Sankey diagram visualization.
     """
     flows = data[str(year)]
-    labels = ['Germany'] + list(flows['imports'].keys())
+    countries = list(flows['imports'].keys())
 
-    # Constructing Source, Target, and Values for Sankey
-    source, target, value = [], [], []
+    labels = countries + ['Germany']  # Make Germany the target (last label)
 
-    for idx, country in enumerate(flows['imports'].keys(), start=1):
-        # Exports from Germany -> Country
-        source.append(0)  
-        target.append(idx)
-        value.append(flows['exports'][country])
-        
-        # Imports from Country -> Germany
-        source.append(idx)  
-        target.append(0)
+    # Define colors for each country
+    country_colors = {
+        'NO': 'red',
+        'FR': 'green',
+        'CH': 'blue',
+        'AT': 'orange',
+        'PL': 'purple',
+        'NL': 'brown',
+        'CZ': 'cyan',
+        'DK': 'magenta',
+        'BE': 'lime',
+        'SE': 'pink'
+    }
+
+    # Constructing Source, Target, Values, and Colors for Sankey
+    source, target, value, link_colors = [], [], [], []
+
+    for idx, country in enumerate(countries):
+        # Imports: Country → Germany (Reversing direction)
+        source.append(idx)  # Source is the country
+        target.append(len(countries))  # Target is Germany
         value.append(flows['imports'][country])
+
+        # Assign country-specific color to the link
+        link_colors.append(country_colors.get(country, 'grey'))  # Default to grey if country not found
 
     fig = go.Figure(go.Sankey(
         node=dict(
@@ -87,11 +102,12 @@ def update_chord(year):
         link=dict(
             source=source,
             target=target,
-            value=value
+            value=value,
+            color=link_colors  # Assigning colors to each link
         )
     ))
 
-    fig.update_layout(title_text=f"Energy Flows Between Germany and Neighbors in {year}", font_size=10)
+    fig.update_layout(title_text=f"Energy Imports to Germany in {year}", font_size=10)
     
     return fig
 
