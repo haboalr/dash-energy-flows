@@ -54,76 +54,152 @@ app.layout = html.Div([
 )
 def update_chord(year):
     """
-    Generates a Sankey diagram for energy imports and exports for the selected year.
-
-    Parameters:
-        year (int): Selected year from the slider.
-
-    Returns:
-        plotly.graph_objects.Figure: Sankey diagram visualization.
+    Generates a luxurious wide-format Sankey diagram with vibrant scientific styling.
     """
     flows = data[str(year)]
     countries = list(flows['imports'].keys())
+    labels = ['Germany'] + countries
 
-    labels = ['Germany'] + countries  # Germany is now first in the list
-
-    # Define colors for each country
+    # Enhanced vibrant scientific color palette
     country_colors = {
-        'NO': 'red',
-        'FR': 'green',
-        'CH': 'blue',
-        'AT': 'orange',
-        'PL': 'purple',
-        'NL': 'brown',
-        'CZ': 'cyan',
-        'DK': 'magenta',
-        'BE': 'lime',
-        'SE': 'pink'
+        'NO': '#00A0B0',  # Bright teal
+        'FR': '#1E88E5',  # Vibrant blue
+        'CH': '#26A69A',  # Green-teal
+        'AT': '#FF7043',  # Coral orange
+        'PL': '#5C6BC0',  # Indigo blue
+        'NL': '#FFA726',  # Warm orange
+        'CZ': '#2E7D32',  # Forest green
+        'DK': '#00ACC1',  # Cyan
+        'BE': '#43A047',  # Vivid green
+        'SE': '#039BE5'   # Light blue
     }
 
-    # Construct Source, Target, Values, Colors, and Hover Labels for Sankey
+    # Generate vibrant node colors
+    node_colors = ['#263238'] + [country_colors.get(country, '#546E7A') for country in countries]
+
     source, target, value, link_colors, hover_labels = [], [], [], [], []
 
-    for idx, country in enumerate(countries, start=1):  # Start at 1 since Germany is 0
-        import_value = flows['imports'][country]  # Value in TWh
-        export_value = flows['exports'][country]  # Value in TWh
+    def create_gradient_color(base_color, direction='imports'):
+        rgb = tuple(int(base_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+        if direction == 'imports':
+            return f'rgba{rgb + (0.85,)}'  # More opacity for better visibility
+        return f'rgba{rgb + (0.6,)}'       # More opacity for exports too
 
-        # Imports: Country → Germany
-        source.append(idx)  # Source is the country
-        target.append(0)  # Target is Germany
-        value.append(import_value)  # Line width proportional to value
-        link_colors.append(country_colors.get(country, 'grey'))  # Assign country color
-        hover_labels.append(f"{country} → Germany: {import_value:.2f} TWh")
+    for idx, country in enumerate(countries, start=1):
+        import_value = flows['imports'][country]
+        export_value = flows['exports'][country]
 
-        # Exports: Germany → Country
-        source.append(0)  # Source is Germany
-        target.append(idx)  # Target is the country
-        value.append(export_value)  # Line width proportional to value
-        link_colors.append(country_colors.get(country, 'grey'))  # Assign same country color
-        hover_labels.append(f"Germany → {country}: {export_value:.2f} TWh")
+        # Enhanced imports styling
+        source.append(idx)
+        target.append(0)
+        value.append(import_value)
+        base_color = country_colors.get(country, '#546E7A')
+        link_colors.append(create_gradient_color(base_color, 'imports'))
+        hover_labels.append(
+            f"<b>{country} → Germany</b><br>" +
+            f"Import: {import_value:.1f} TWh<br>" +
+            f"<span style='font-size:0.9em; color: #666'>Click to highlight flow</span>"
+        )
 
-    # Create Sankey diagram
+        # Enhanced exports styling
+        source.append(0)
+        target.append(idx)
+        value.append(export_value)
+        link_colors.append(create_gradient_color(base_color, 'exports'))
+        hover_labels.append(
+            f"<b>Germany → {country}</b><br>" +
+            f"Export: {export_value:.1f} TWh<br>" +
+            f"<span style='font-size:0.9em; color: #666'>Click to highlight flow</span>"
+        )
+
+    # Create the enhanced Sankey diagram
     fig = go.Figure(go.Sankey(
+        arrangement="snap",
         node=dict(
-            pad=15,
-            thickness=20,
+            pad=35,
+            thickness=35,
+            line=dict(color="#fff", width=1.5),
             label=labels,
-            color="black"  # Make node text black for visibility
+            color=node_colors,
+            customdata=labels,
+            hovertemplate="<b>%{customdata}</b><br>" +
+                         "Total Flow: %{value:.1f} TWh<br>" +
+                         "<i>Click to highlight connections</i><extra></extra>",
         ),
         link=dict(
             source=source,
             target=target,
             value=value,
-            color=link_colors,  # Ensure the color matches the country
+            color=link_colors,
             customdata=hover_labels,
-            hovertemplate='%{customdata}<extra></extra>'  # Shows values on hover
+            hovertemplate="%{customdata}<extra></extra>"
         )
     ))
 
-    fig.update_layout(title_text=f"Germany's Energy Trade Balance in {year} (TWh)", font_size=10)
-    
-    return fig
+    # Enhanced layout styling
+    fig.update_layout(
+        title=dict(
+            text=f"Germany's Energy Trade Balance {year}",
+            font=dict(
+                size=32,
+                family="Arial",
+                color='#1A237E'
+            ),
+            x=0.5,
+            y=0.98
+        ),
+        font=dict(
+            family="Arial",
+            size=14,
+            color='#37474F'
+        ),
+        paper_bgcolor='#FFFFFF',
+        plot_bgcolor='#FFFFFF',
+        width=1800,  # Even wider format
+        height=900,  # Increased height
+        margin=dict(t=120, l=60, r=60, b=60),
+        updatemenus=[
+            dict(
+                type="buttons",
+                showactive=False,
+                x=0.05,
+                y=1.15,
+                buttons=[
+                    dict(
+                        label="Reset View",
+                        method="relayout",
+                        args=["xaxis.range", None]
+                    )
+                ]
+            )
+        ],
+        annotations=[
+            dict(
+                text="TWh (Terawatt Hours)",
+                showarrow=False,
+                x=0.5,
+                y=-0.1,
+                xref="paper",
+                yref="paper",
+                font=dict(size=16, color='#37474F')
+            )
+        ]
+    )
 
+    # Add subtle pattern background
+    for i in range(0, 101, 10):
+        fig.add_shape(
+            type="line",
+            x0=0,
+            y0=i/100,
+            x1=1,
+            y1=i/100,
+            xref="paper",
+            yref="paper",
+            line=dict(color="#F5F5F5", width=1)
+        )
+
+    return fig
 
 # ===============================
 # Run Server
