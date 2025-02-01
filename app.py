@@ -5,93 +5,20 @@ Created on Fri Jan 31 23:51:27 2025
 @author: Hamza
 """
 
-import os
-import pypsa
 import dash
 from dash import dcc, html  
 from dash.dependencies import Input, Output
 import plotly.graph_objects as go
-import pandas as pd
-
-
-# ===============================
-# Configuration
-# ===============================
-NETWORKS_FOLDER = "Networks"  # Folder where network .nc files are stored
-YEARS = list(range(2020, 2031))  # Years from 2020 to 2030
-COUNTRIES = ['NO', 'FR', 'CH', 'AT', 'PL', 'NL', 'CZ', 'DK', 'BE', 'SE']
-
+import json
 
 # ===============================
-# Function: Load PyPSA Networks
+# Load Preprocessed Data
 # ===============================
-def load_networks():
-    """
-    Loads PyPSA network files from the NETWORKS_FOLDER.
+with open("data.json", "r") as f:
+    data = json.load(f)
 
-    Returns:
-        dict: Dictionary where keys are years (2020-2030) and values are PyPSA networks.
-    """
-    networks = {}
-
-    for year in YEARS:
-        file_path = os.path.join(NETWORKS_FOLDER, f'{year}.nc')
-        if os.path.exists(file_path):  # Check if the file exists
-            networks[year] = pypsa.Network(file_path)
-        else:
-            print(f"Warning: {file_path} not found!")  # Debugging info
-    
-    return networks
-
-
-# ===============================
-# Function: Extract Import/Export Data
-# ===============================
-def get_import_export_data(networks):
-    """
-    Extracts import/export energy data for all years from the PyPSA networks.
-
-    Parameters:
-        networks (dict): A dictionary where keys are years (2020-2030) and values are PyPSA networks.
-
-    Returns:
-        dict: Nested dictionary with imports and exports data for each year and country.
-    """
-    data = {}
-
-    for year, n in networks.items():
-        country_links = {}
-
-        for country_code in COUNTRIES:
-            country_bus_id = f"{country_code}_imports"
-            link_id = f"{country_bus_id}_link"
-            if link_id in n.links.index:
-                country_links[country_code] = link_id
-
-        year_data = {'imports': {}, 'exports': {}}
-
-        for country_code, link_id in country_links.items():
-            p0 = n.links_t.p0[link_id]
-            p1 = n.links_t.p1[link_id]  # p1 = -p0 if efficiency is 1
-
-            # Sum over time to get total energy in MWh and convert to TWh
-            total_imports_TWh = p0.clip(lower=0).sum() / 1e6
-            total_exports_TWh = p1.clip(lower=0).sum() / 1e6
-
-            year_data['imports'][country_code] = total_imports_TWh
-            year_data['exports'][country_code] = total_exports_TWh
-
-        data[year] = year_data
-
-    return data
-
-
-# ===============================
-# Load Networks & Extract Data
-# ===============================
-networks = load_networks()
-data = get_import_export_data(networks)
-
+YEARS = list(data.keys())
+COUNTRIES = list(data[str(YEARS[0])]['imports'].keys())
 
 # ===============================
 # Dash App Initialization
@@ -107,16 +34,15 @@ app.layout = html.Div([
     html.Label("Select Year:"),
     dcc.Slider(
         id='year-slider',
-        min=min(YEARS),
-        max=max(YEARS),
-        value=min(YEARS),
-        marks={year: str(year) for year in YEARS},
+        min=int(min(YEARS)),
+        max=int(max(YEARS)),
+        value=int(min(YEARS)),
+        marks={int(year): str(year) for year in YEARS},
         step=1
     ),
     
     dcc.Graph(id='chord-diagram')
 ])
-
 
 # ===============================
 # Callback: Update Chord Diagram
@@ -135,7 +61,7 @@ def update_chord(year):
     Returns:
         plotly.graph_objects.Figure: Sankey diagram visualization.
     """
-    flows = data[year]
+    flows = data[str(year)]
     labels = ['Germany'] + list(flows['imports'].keys())
 
     # Constructing Source, Target, and Values for Sankey
@@ -168,7 +94,6 @@ def update_chord(year):
     fig.update_layout(title_text=f"Energy Flows Between Germany and Neighbors in {year}", font_size=10)
     
     return fig
-
 
 # ===============================
 # Run Server
