@@ -54,7 +54,7 @@ app.layout = html.Div([
 )
 def update_chord(year):
     """
-    Generates a Sankey diagram for energy imports/exports for the selected year.
+    Generates a Sankey diagram for energy imports and exports for the selected year.
 
     Parameters:
         year (int): Selected year from the slider.
@@ -65,7 +65,7 @@ def update_chord(year):
     flows = data[str(year)]
     countries = list(flows['imports'].keys())
 
-    labels = countries + ['Germany']  # Make Germany the target (last label)
+    labels = ['Germany'] + countries  # Germany is now first in the list
 
     # Define colors for each country
     country_colors = {
@@ -81,35 +81,49 @@ def update_chord(year):
         'SE': 'pink'
     }
 
-    # Constructing Source, Target, Values, and Colors for Sankey
-    source, target, value, link_colors = [], [], [], []
+    # Construct Source, Target, Values, Colors, and Hover Labels for Sankey
+    source, target, value, link_colors, hover_labels = [], [], [], [], []
 
-    for idx, country in enumerate(countries):
-        # Imports: Country → Germany (Reversing direction)
+    for idx, country in enumerate(countries, start=1):  # Start at 1 since Germany is 0
+        import_value = flows['imports'][country]  # Value in TWh
+        export_value = flows['exports'][country]  # Value in TWh
+
+        # Imports: Country → Germany
         source.append(idx)  # Source is the country
-        target.append(len(countries))  # Target is Germany
-        value.append(flows['imports'][country])
+        target.append(0)  # Target is Germany
+        value.append(import_value)  # Line width proportional to value
+        link_colors.append(country_colors.get(country, 'grey'))  # Assign country color
+        hover_labels.append(f"{country} → Germany: {import_value:.2f} TWh")
 
-        # Assign country-specific color to the link
-        link_colors.append(country_colors.get(country, 'grey'))  # Default to grey if country not found
+        # Exports: Germany → Country
+        source.append(0)  # Source is Germany
+        target.append(idx)  # Target is the country
+        value.append(export_value)  # Line width proportional to value
+        link_colors.append(country_colors.get(country, 'grey'))  # Assign same country color
+        hover_labels.append(f"Germany → {country}: {export_value:.2f} TWh")
 
+    # Create Sankey diagram
     fig = go.Figure(go.Sankey(
         node=dict(
             pad=15,
             thickness=20,
-            label=labels
+            label=labels,
+            color="black"  # Make node text black for visibility
         ),
         link=dict(
             source=source,
             target=target,
             value=value,
-            color=link_colors  # Assigning colors to each link
+            color=link_colors,  # Ensure the color matches the country
+            customdata=hover_labels,
+            hovertemplate='%{customdata}<extra></extra>'  # Shows values on hover
         )
     ))
 
-    fig.update_layout(title_text=f"Energy Imports to Germany in {year}", font_size=10)
+    fig.update_layout(title_text=f"Germany's Energy Trade Balance in {year} (TWh)", font_size=10)
     
     return fig
+
 
 # ===============================
 # Run Server
